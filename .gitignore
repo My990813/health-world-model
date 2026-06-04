@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pkl
+health_log.db
+jepa_weights.json
+index.html.bak
+.DS_Store
