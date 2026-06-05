@@ -1233,7 +1233,151 @@ const SPLIT=[
   {n:'加餐',r:.05,cats:['fr','pr','ft']},
 ];
 
-function genMeals(tc,tp,tcar,tf,N=5000){
+// ============ LP Solver (Tableau Simplex + Big-M) ============
+// min c^T x, s.t. A_ub x <= b_ub, A_eq x = b_eq, x >= 0
+function solveLP(c,A_ub,b_ub,A_eq,b_eq){
+  const M=1e6,mU=(A_ub||[]).length,mE=(A_eq||[]).length;
+  const m=mU+mE,n=c.length;
+  if(!m)return{status:'ok',x:c.map(()=>0),obj:0};
+  const rows=[],meta=[];
+  for(let i=0;i<mU;i++){
+    let a=A_ub[i],b=b_ub[i];
+    if(b<0){a=a.map(v=>-v);b=-b;meta.push({slack:-1,art:true})}
+    else meta.push({slack:1,art:false});
+    rows.push({a,b});
+  }
+  for(let i=0;i<mE;i++){
+    let a=A_eq[i],b=b_eq[i];
+    if(b<0){a=a.map(v=>-v);b=-b}
+    rows.push({a,b});meta.push({slack:0,art:true});
+  }
+  let nS=0,nA=0;
+  for(const mt of meta){
+    if(mt.slack!==0){mt.sIdx=n+nS;nS++}
+    if(mt.art){mt.aIdx=n+nS+nA;nA++}
+  }
+  const nT=n+nS+nA;
+  const T=[];
+  for(let i=0;i<=m;i++)T.push(new Float64Array(nT+1));
+  for(let i=0;i<m;i++){
+    for(let j=0;j<n;j++)T[i][j]=rows[i].a[j]||0;
+    if(meta[i].sIdx!==undefined)T[i][meta[i].sIdx]=meta[i].slack;
+    if(meta[i].aIdx!==undefined)T[i][meta[i].aIdx]=1;
+    T[i][nT]=rows[i].b;
+  }
+  for(let j=0;j<n;j++)T[m][j]=c[j]||0;
+  for(let i=0;i<m;i++)if(meta[i].aIdx!==undefined)T[m][meta[i].aIdx]=M;
+  for(let i=0;i<m;i++){
+    if(meta[i].aIdx!==undefined)
+      for(let j=0;j<=nT;j++)T[m][j]-=M*T[i][j];
+  }
+  const basis=[];
+  for(let i=0;i<m;i++)basis.push(meta[i].aIdx!==undefined?meta[i].aIdx:meta[i].sIdx);
+  for(let iter=0;iter<15000;iter++){
+    let enter=-1;
+    for(let j=0;j<nT;j++)if(T[m][j]<-1e-8){enter=j;break}
+    if(enter<0)break;
+    let leave=-1,minR=1e18;
+    for(let i=0;i<m;i++){
+      if(T[i][enter]>1e-10){
+        const r=T[i][nT]/T[i][enter];
+        if(r<minR-1e-12||(Math.abs(r-minR)<1e-12&&basis[i]<basis[leave])){minR=r;leave=i}
+      }
+    }
+    if(leave<0)return{status:'unbounded',x:null,obj:-Infinity};
+    const piv=T[leave][enter];
+    for(let j=0;j<=nT;j++)T[leave][j]/=piv;
+    for(let i=0;i<=m;i++){
+      if(i===leave)continue;
+      const f=T[i][enter];
+      if(Math.abs(f)<1e-15)continue;
+      for(let j=0;j<=nT;j++)T[i][j]-=f*T[leave][j];
+    }
+    basis[leave]=enter;
+  }
+  for(let i=0;i<m;i++){
+    if(basis[i]>=n+nS&&T[i][nT]>1e-3)return{status:'infeasible',x:null,obj:Infinity};
+  }
+  const x=new Array(n).fill(0);
+  for(let i=0;i<m;i++)if(basis[i]<n)x[basis[i]]=Math.max(0,T[i][nT]);
+  return{status:'optimal',x,obj:-T[m][nT]};
+}
+
+// ============ LP Meal Plan Optimizer ============
+function solveMealPlan(tc,tp,tcar,tf,tvc,tfb,noise){
+  const pairs=[];
+  for(let j=0;j<4;j++){
+    const ms=SPLIT[j];
+    for(let i=0;i<FOODS.length;i++){
+      if(ms.cats.includes(FOODS[i].cat)){
+        const gf=giFactor(FOODS[i].gi);
+        const maxP=Math.round(Math.min(500,FOODS[i].s*2.5*gf));
+        pairs.push({fi:i,mi:j,mp:Math.max(maxP,30)});
+      }
+    }
+  }
+  const P=pairs.length,N=P+12;
+  const c=new Array(N).fill(0);
+  const w=[6,3,1,1,1.5,1.5];
+  for(let k=0;k<6;k++){
+    c[P+k]=w[k]*(1+(noise?noise[k]*.3:0));
+    c[P+6+k]=w[k]*(1-(noise?noise[k]*.3:0));
+  }
+  for(let p=0;p<P;p++)c[p]=.001*(1+(noise?(Math.random()-.5):0));
+  const nk=['cal','p','c','f','vc','fb'],tg=[tc,tp,tcar,tf,tvc,tfb];
+  const Aeq=[],beq=[];
+  for(let k=0;k<6;k++){
+    const row=new Array(N).fill(0);
+    for(let p=0;p<P;p++)row[p]=FOODS[pairs[p].fi][nk[k]]/100;
+    row[P+k]=-1;row[P+6+k]=1;
+    Aeq.push(row);beq.push(tg[k]);
+  }
+  const Aub=[],bub=[];
+  for(let p=0;p<P;p++){
+    const row=new Array(N).fill(0);row[p]=1;
+    Aub.push(row);bub.push(pairs[p].mp);
+  }
+  for(let j=0;j<4;j++){
+    const row=new Array(N).fill(0);
+    for(let p=0;p<P;p++)if(pairs[p].mi===j)row[p]=FOODS[pairs[p].fi].cal/100;
+    Aub.push(row);bub.push(tc*SPLIT[j].r*1.6);
+  }
+  for(let j=0;j<3;j++){
+    const row=new Array(N).fill(0);
+    for(let p=0;p<P;p++)if(pairs[p].mi===j)row[p]=-FOODS[pairs[p].fi].cal/100;
+    Aub.push(row);bub.push(-tc*SPLIT[j].r*.6);
+  }
+  const res=solveLP(c,Aub,bub,Aeq,beq);
+  if(res.status!=='optimal')return null;
+  const meals=[
+    {m:SPLIT[0].n,items:[],tc:0,ac:0},{m:SPLIT[1].n,items:[],tc:0,ac:0},
+    {m:SPLIT[2].n,items:[],tc:0,ac:0},{m:SPLIT[3].n,items:[],tc:0,ac:0}
+  ];
+  let tCal=0,tP=0,tC=0,tF=0,tVC=0,tFb=0;
+  for(let p=0;p<P;p++){
+    const g=res.x[p];if(g<15)continue;
+    const sv=Math.round(g/5)*5;if(sv<15)continue;
+    const fd=FOODS[pairs[p].fi];
+    const cl=fd.cal*sv/100,pp=fd.p*sv/100,cc=fd.c*sv/100,ff=fd.f*sv/100;
+    const vc=(fd.vc||0)*sv/100,fb=(fd.fb||0)*sv/100;
+    meals[pairs[p].mi].items.push({
+      n:fd.n,cat:fd.cat,g:sv,cal:+cl.toFixed(0),p:+pp.toFixed(1),
+      c:+cc.toFixed(1),f:+ff.toFixed(1),vc:+vc.toFixed(1),fb:+fb.toFixed(1),gi:fd.gi||0
+    });
+    tCal+=cl;tP+=pp;tC+=cc;tF+=ff;tVC+=vc;tFb+=fb;
+  }
+  for(let j=0;j<4;j++)meals[j].ac=meals[j].tc=+meals[j].items.reduce((a,it)=>a+it.cal,0).toFixed(0);
+  if(tCal<100)return null;
+  const sc=Math.abs(tCal-tc)/tc*3+Math.abs(tP-tp)/(tp+1)*2
+    +Math.abs(tC-tcar)/(tcar+1)*.5+Math.abs(tF-tf)/(tf+1)*.5;
+  return{sc:+sc.toFixed(4),tc:+tCal.toFixed(0),tp:+tP.toFixed(1),tc2:+tC.toFixed(1),
+    tf:+tF.toFixed(0),tvc:+tVC.toFixed(0),tfb:+tFb.toFixed(1),
+    pp:+(tP*4/tCal*100||0).toFixed(1),cp:+(tC*4/tCal*100||0).toFixed(1),
+    fp:+(tF*9/tCal*100||0).toFixed(1),meals};
+}
+
+// ============ Monte Carlo Fallback ============
+function genMealsMC(tc,tp,tcar,tf,N=3000){
   const R=.4; let best=[];
   for(let s=0;s<N;s++){
     let tCal=0,tP=0,tC=0,tF=0,tVC=0,tFb=0; const meals=[];
@@ -1260,6 +1404,19 @@ function genMeals(tc,tp,tcar,tf,N=5000){
       pp:+(tP*4/tCal*100||0).toFixed(1),cp:+(tC*4/tCal*100||0).toFixed(1),fp:+(tF*9/tCal*100||0).toFixed(1),meals});
   }
   best.sort((a,b)=>a.sc-b.sc); return best.slice(0,3);
+}
+
+// ============ Entry Point: LP优先 + MC回退 ============
+function genMeals(tc,tp,tcar,tf,N){
+  if(!tc||tc<500)return genMealsMC(tc,tp,tcar,tf,N||3000);
+  const plans=[];
+  const noises=[[1,-.5,1,-.5,.5,-.5],[-.5,1,-.5,1,-.5,.5],[0,0,0,0,0,0]];
+  for(let i=0;i<3;i++){
+    const plan=solveMealPlan(tc,tp,tcar,tf,90,25,noises[i]);
+    if(plan)plans.push(plan);
+  }
+  if(plans.length>0){plans.sort((a,b)=>a.sc-b.sc);return plans.slice(0,3)}
+  return genMealsMC(tc,tp,tcar,tf,3000);
 }
 
 function checkWarnings(totalCal, protein, carbs, fat, vitC, fiber, prof, isManual) {
