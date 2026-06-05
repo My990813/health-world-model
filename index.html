@@ -444,7 +444,7 @@ tr:hover td { background:var(--blue-bg); }
         <div class="form-group"><label>目标纤维 (g)</label><input type="number" id="mFb" value="25"></div>
       </div>
       <div class="btn-group">
-        <button class="btn btn-primary" onclick="runCook()">生成三餐</button>
+        <button class="btn btn-primary" id="btnCook" onclick="runCook()">生成三餐</button>
         <button class="btn btn-ghost" onclick="usePlanForCook()">使用规划目标</button>
       </div>
     </div>
@@ -1737,15 +1737,25 @@ function usePlanForCook(){
 }
 
 function runCook(){
-  const btn=document.querySelector('#cookResults')?.previousElementSibling?.querySelector('.btn-primary')
-    || document.querySelector('#tabMealPlan .btn-primary');
+  // 自动从规划同步数据到配餐输入框
+  if(lastPlan){
+    const d=lastPlan.plan[0];
+    const p = getP();
+    document.getElementById('mC').value=d.total_cal;
+    document.getElementById('mP2').value=d.protein_g;
+    document.getElementById('mCb').value=d.carbs_g;
+    document.getElementById('mF').value=d.fat_g;
+    document.getElementById('mVC').value=calcDailyVitC(p.gender);
+    document.getElementById('mFb').value=calcDailyFiber();
+  }
+  const btn=document.getElementById('btnCook');
   if(btn){btn.disabled=true;btn.textContent='配餐中...'}
   let done=false;
   toast('正在为你配餐...','info');
   const timeout=setTimeout(()=>{
     if(!done){
       done=true;
-      if(btn){btn.disabled=false;btn.textContent='智能配餐'}
+      if(btn){btn.disabled=false;btn.textContent='生成三餐'}
       toast('手机端计算超时，已使用快速方案','warn');
       const quick=genMealsMC(
         parseFloat(document.getElementById('mC').value),
@@ -1773,14 +1783,14 @@ function runCook(){
       clearTimeout(timeout);
       if(done)return;
       done=true;
-      if(btn){btn.disabled=false;btn.textContent='智能配餐'}
+      if(btn){btn.disabled=false;btn.textContent='生成三餐'}
       if(!ps||!ps.length||!ps[0]){toast('配餐失败，请调整目标后重试','err');return}
       renderCookResults(ps);
     }catch(e){
       clearTimeout(timeout);
       if(done)return;
       done=true;
-      if(btn){btn.disabled=false;btn.textContent='智能配餐'}
+      if(btn){btn.disabled=false;btn.textContent='生成三餐'}
       toast('计算出错: '+e.message,'err');
     }
   },60);
@@ -1818,24 +1828,24 @@ function renderCookResults(ps){
 // ============ 极简兜底方案（超时最后手段） ============
 function fallbackPlan(tc,tp){
   const st=FOODS.filter(f=>f.cat==='st'),pr=FOODS.filter(f=>f.cat==='pr');
-  const vg=FOODS.filter(f=>f.cat==='vg'),fr=FOODS.filter(f=>f.cat==='fr');
-  const pick=(arr)=>arr[Math.floor(Math.random()*arr.length)];
+  const vg=FOODS.filter(f=>f.cat==='vg'),fr=FOODS.filter(f=>f.cat==='fr'),ft=FOODS.filter(f=>f.cat==='ft');
+  const pick=(arr)=>{if(!arr.length)return{cal:0,p:0,c:0,f:0,vc:0,fb:0,cat:'st',gi:0,s:100,n:'白米饭'};return arr[Math.floor(Math.random()*arr.length)]};
   const meals=[];
-  const splits=[.3,.4,.2,.1];
-  const pickers=[
-    [st,st,pr],
-    [st,pr,vg,fr],
-    [st,pr,vg],
-    [fr]
-  ];
+  const splits=[.3,.35,.25,.1];
+  const pickers=[[st,pr,vg],[st,pr,vg,fr],[st,pr,vg],[fr]];
   let tCal=0,tP=0,tC=0,tF=0,tVC=0,tFb=0;
   for(let j=0;j<4;j++){
-    const mtc=tc*splits[j];const items=[];
-    for(const fd of pickers[j]){
-      const sv=fd.s||100;const cl=fd.cal*sv/100;
-      items.push({n:fd.n,cat:fd.cat,g:sv,cal:+cl.toFixed(0),p:+(fd.p*sv/100).toFixed(1),c:+(fd.c*sv/100).toFixed(1),f:+(fd.f*sv/100).toFixed(1),vc:+((fd.vc||0)*sv/100).toFixed(1),fb:+((fd.fb||0)*sv/100).toFixed(1),gi:fd.gi||0});
+    const mtc=tc*splits[j];const items=[];let rem=mtc;
+    const nItems=j===3?1:(j===0?3:3);
+    for(let i=0;i<nItems;i++){
+      const fd=pick(pickers[j]);
+      let sv=fd.s||100;
+      let cl=fd.cal*sv/100;
+      if(cl>rem*.7)sv=rem*.7*100/(fd.cal+1);cl=fd.cal*sv/100;
+      if(cl>rem)continue;
+      items.push({n:fd.n,cat:fd.cat,g:+sv.toFixed(0),cal:+cl.toFixed(0),p:+(fd.p*sv/100).toFixed(1),c:+(fd.c*sv/100).toFixed(1),f:+(fd.f*sv/100).toFixed(1),vc:+((fd.vc||0)*sv/100).toFixed(1),fb:+((fd.fb||0)*sv/100).toFixed(1),gi:fd.gi||0});
       tCal+=cl;tP+=fd.p*sv/100;tC+=fd.c*sv/100;tF+=fd.f*sv/100;
-      tVC+=(fd.vc||0)*sv/100;tFb+=(fd.fb||0)*sv/100;
+      tVC+=(fd.vc||0)*sv/100;tFb+=(fd.fb||0)*sv/100;rem-=cl;
     }
     meals.push({m:SPLIT[j].n,items,tc:0,ac:Math.round(items.reduce((a,it)=>a+it.cal,0))});
   }
