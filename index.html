@@ -275,10 +275,10 @@ tr:hover td { background:var(--blue-bg); }
 <!-- ===== 总览 ===== -->
 <div class="tab-content active" id="tab-overview">
   <div class="metrics">
-    <div class="metric"><div class="metric-value blue" id="mW">--</div><div class="metric-label">当前体重 kg</div></div>
-    <div class="metric"><div class="metric-value green" id="mC">--</div><div class="metric-label">昨日热量 kcal</div></div>
-    <div class="metric"><div class="metric-value orange" id="mP">--</div><div class="metric-label">蛋白摄入 g</div></div>
-    <div class="metric"><div class="metric-value purple" id="mT">--</div><div class="metric-label">7天变化 kg</div></div>
+    <div class="metric"><div class="metric-value blue" id="ovW">--</div><div class="metric-label">当前体重 kg</div></div>
+    <div class="metric"><div class="metric-value green" id="ovCal">--</div><div class="metric-label">昨日热量 kcal</div></div>
+    <div class="metric"><div class="metric-value orange" id="ovP">--</div><div class="metric-label">蛋白摄入 g</div></div>
+    <div class="metric"><div class="metric-value purple" id="ovT">--</div><div class="metric-label">7天变化 kg</div></div>
   </div>
   <!-- 身体状态概览 -->
   <div class="card" id="overviewBodyState" style="display:none">
@@ -1486,10 +1486,10 @@ function switchCookTab(tab) {
 function loadOverview(){
   const logs=getLogs();
   if(!logs.length){
-    document.getElementById('mW').textContent='--';
-    document.getElementById('mC').textContent='--';
-    document.getElementById('mP').textContent='--';
-    document.getElementById('mT').textContent='--';
+    document.getElementById('ovW').textContent='--';
+    document.getElementById('ovCal').textContent='--';
+    document.getElementById('ovP').textContent='--';
+    document.getElementById('ovT').textContent='--';
     document.getElementById('tBody').innerHTML='';
     ['wChart','nChart'].forEach(id=>{const el=document.getElementById(id);if(el){if(ch[id.replace('Chart','')])ch[id.replace('Chart','')].destroy();el.innerHTML='<div style="color:var(--text-hint);font-size:.8rem;text-align:center;padding:30px">暂无数据，请先在「记录今日」中录入</div>'}});
     document.getElementById('overviewBodyState').style.display='none';
@@ -1498,10 +1498,10 @@ function loadOverview(){
   // 按日期从早到晚排序
   logs.sort((a,b)=>a.date.localeCompare(b.date));
   const la=logs[logs.length-1];
-  document.getElementById('mW').textContent=la.weight;
-  document.getElementById('mC').textContent=la.breakfast_cal+la.lunch_cal+la.dinner_cal+la.snack_cal;
-  document.getElementById('mP').textContent=la.protein_g;
-  if(logs.length>=7){const d=(la.weight-logs[logs.length-7].weight).toFixed(1);document.getElementById('mT').innerHTML=`<span style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?'&#x2193;':'&#x2191;'}${Math.abs(d)}kg</span>`}
+  document.getElementById('ovW').textContent=la.weight;
+  document.getElementById('ovCal').textContent=la.breakfast_cal+la.lunch_cal+la.dinner_cal+la.snack_cal;
+  document.getElementById('ovP').textContent=la.protein_g;
+  if(logs.length>=7){const d=(la.weight-logs[logs.length-7].weight).toFixed(1);document.getElementById('ovT').innerHTML=`<span style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?'&#x2193;':'&#x2191;'}${Math.abs(d)}kg</span>`}
   drawWChart(logs.slice(-60));drawNChart(logs.slice(-14));drawTable(logs.slice(-14).slice().reverse());
 
   // 身体状态分析
