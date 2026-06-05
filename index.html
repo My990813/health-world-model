@@ -1750,60 +1750,46 @@ function runCook(){
   }
   const btn=document.getElementById('btnCook');
   if(btn){btn.disabled=true;btn.textContent='配餐中...'}
-  let done=false;
-  toast('正在为你配餐...','info');
-  const timeout=setTimeout(()=>{
-    if(!done){
-      done=true;
-      if(btn){btn.disabled=false;btn.textContent='生成三餐'}
-      toast('手机端计算超时，已使用快速方案','warn');
-      const quick=genMealsMC(
-        parseFloat(document.getElementById('mC').value),
-        parseFloat(document.getElementById('mP2').value),
-        parseFloat(document.getElementById('mCb').value),
-        parseFloat(document.getElementById('mF').value),
-        200
-      );
-      renderCookResults(quick[0]?quick:[fallbackPlan(
-        parseFloat(document.getElementById('mC').value),
-        parseFloat(document.getElementById('mP2').value)
-      )]);
-    }
-  },3000);
-  setTimeout(()=>{
-    if(done)return;
+  const cookEl=document.getElementById('cookResults');
+  cookEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-hint)">&#x23F3; 正在为你配餐...</div>';
+
+  // 用setTimeout(0)让浏览器先渲染loading状态，再执行计算
+  setTimeout(function(){
     try{
-      const ps=genMeals(
-        parseFloat(document.getElementById('mC').value),
-        parseFloat(document.getElementById('mP2').value),
-        parseFloat(document.getElementById('mCb').value),
-        parseFloat(document.getElementById('mF').value),
-        5000
-      );
-      clearTimeout(timeout);
-      if(done)return;
-      done=true;
+      const tc=parseFloat(document.getElementById('mC').value);
+      const tp=parseFloat(document.getElementById('mP2').value);
+      const tcar=parseFloat(document.getElementById('mCb').value);
+      const tf=parseFloat(document.getElementById('mF').value);
+      if(!tc||tc<500||isNaN(tc)){
+        cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">请输入有效的目标热量（≥500kcal）</div>';
+        if(btn){btn.disabled=false;btn.textContent='生成三餐'}
+        return;
+      }
+      const ps=genMeals(tc,tp,tcar,tf);
+      if(!ps||!ps.length||!ps[0]){
+        cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">配餐失败，请调整营养目标后重试</div>';
+        if(btn){btn.disabled=false;btn.textContent='生成三餐'}
+        return;
+      }
       if(btn){btn.disabled=false;btn.textContent='生成三餐'}
-      if(!ps||!ps.length||!ps[0]){toast('配餐失败，请调整目标后重试','err');return}
       renderCookResults(ps);
     }catch(e){
-      clearTimeout(timeout);
-      if(done)return;
-      done=true;
+      cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">计算出错: '+e.message+'</div>';
       if(btn){btn.disabled=false;btn.textContent='生成三餐'}
-      toast('计算出错: '+e.message,'err');
     }
-  },60);
+  },0);
 }
 
 function renderCookResults(ps){
+  const cookEl=document.getElementById('cookResults');
+  try{
   const best=ps[0];
   const tVC = parseFloat(document.getElementById('mVC').value) || 90;
   const tFb = parseFloat(document.getElementById('mFb').value) || 25;
   const warns=checkWarnings(best.tc, best.tp, best.tc2, best.tf, best.tvc, best.tfb);
   renderWarnings(warns, 'cookWarnings');
 
-  document.getElementById('cookResults').innerHTML=ps.map((p,idx)=>`
+  cookEl.innerHTML=ps.map((p,idx)=>`
       <div class="card" style="margin-bottom:12px;${idx===0?'border-color:var(--green)':''}">
         <div class="card-title"><span class="icon">${idx===0?'&#x1F3C6;':'&#x1F4CB;'}</span> 方案${idx+1}
           <span style="margin-left:auto;font-size:.73rem;color:var(--text-hint)">
@@ -1823,6 +1809,9 @@ function renderCookResults(ps){
       </div>
     `).join('');
     toast('三餐方案已生成!','ok');
+  }catch(e){
+    cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">渲染出错: '+e.message+'</div>';
+  }
 }
 
 // ============ 极简兜底方案（超时最后手段） ============
