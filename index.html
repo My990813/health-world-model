@@ -1422,6 +1422,20 @@ function genMeals(tc,tp,tcar,tf,N){
 function checkWarnings(totalCal, protein, carbs, fat, vitC, fiber, prof, isManual) {
   const warns = [];
   const p = prof || getProfile();
+  if (!p || !p.weight) {
+    // 无个人资料时，只做通用检查，跳过需要体重的个性化警告
+    if (totalCal < 1200) warns.push(`热量 ${totalCal}kcal 偏低，建议不低于 1200kcal`);
+    if (protein < 40) warns.push(`蛋白质 ${protein.toFixed(0)}g 偏低，建议适当提高`);
+    if (carbs < 50) warns.push(`碳水 ${carbs.toFixed(0)}g 过低，大脑和身体需要碳水供能`);
+    if (fat < 20) warns.push(`脂肪 ${fat.toFixed(0)}g 过低，影响激素分泌和脂溶性维生素吸收`);
+    if (vitC < 90) warns.push(`维生素C ${vitC.toFixed(0)}mg 不足，建议每日至少 90mg（多吃猕猴桃、草莓、彩椒）`);
+    if (fiber < 25) warns.push(`膳食纤维 ${fiber.toFixed(0)}g 不足，建议每日至少 25g（多吃蔬菜和全谷物）`);
+    if (isManual) {
+      if (totalCal > 2500) warns.push(`热量 ${totalCal}kcal 偏高，建议关注总摄入`);
+      if (protein > 150) warns.push(`蛋白质 ${protein.toFixed(0)}g 过高，增加肾脏负担`);
+    }
+    return warns;
+  }
   const bmr = calcBMR(p.weight, p.height, p.age, p.gender);
   const safeMin = Math.max(1000, Math.round(bmr * 0.75));
   const vitCReq = calcDailyVitC(p.gender);
