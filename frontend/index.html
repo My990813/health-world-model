@@ -275,10 +275,10 @@ tr:hover td { background:var(--blue-bg); }
 <!-- ===== 总览 ===== -->
 <div class="tab-content active" id="tab-overview">
   <div class="metrics">
-    <div class="metric"><div class="metric-value blue" id="mW">--</div><div class="metric-label">当前体重 kg</div></div>
-    <div class="metric"><div class="metric-value green" id="mC">--</div><div class="metric-label">昨日热量 kcal</div></div>
-    <div class="metric"><div class="metric-value orange" id="mP">--</div><div class="metric-label">蛋白摄入 g</div></div>
-    <div class="metric"><div class="metric-value purple" id="mT">--</div><div class="metric-label">7天变化 kg</div></div>
+    <div class="metric"><div class="metric-value blue" id="ovW">--</div><div class="metric-label">当前体重 kg</div></div>
+    <div class="metric"><div class="metric-value green" id="ovCal">--</div><div class="metric-label">昨日热量 kcal</div></div>
+    <div class="metric"><div class="metric-value orange" id="ovP">--</div><div class="metric-label">蛋白摄入 g</div></div>
+    <div class="metric"><div class="metric-value purple" id="ovT">--</div><div class="metric-label">7天变化 kg</div></div>
   </div>
   <!-- 身体状态概览 -->
   <div class="card" id="overviewBodyState" style="display:none">
@@ -444,7 +444,7 @@ tr:hover td { background:var(--blue-bg); }
         <div class="form-group"><label>目标纤维 (g)</label><input type="number" id="mFb" value="25"></div>
       </div>
       <div class="btn-group">
-        <button class="btn btn-primary" onclick="runCook()">生成三餐</button>
+        <button class="btn btn-primary" id="btnCook" onclick="runCook()">生成三餐</button>
         <button class="btn btn-ghost" onclick="usePlanForCook()">使用规划目标</button>
       </div>
     </div>
@@ -1170,7 +1170,6 @@ const FOODS=[
   {n:'蓝莓',       cat:'fr', cal:57,  p:0.7, c:14.5, f:0.3,  gi:34, fb:2.4, vc:10,  s:100},
   {n:'草莓',       cat:'fr', cal:30,  p:0.8, c:7.1,  f:0.2,  gi:25, fb:2.0, vc:59,  s:150},
   {n:'橙子',       cat:'fr', cal:48,  p:0.9, c:11.8, f:0.2,  gi:40, fb:2.4, vc:53,  s:200},
-  {n:'柚子',       cat:'fr', cal:41,  p:0.8, c:9.1,  f:0.2,  gi:25, fb:1.1, vc:61,  s:200},
   {n:'猕猴桃',     cat:'fr', cal:56,  p:0.8, c:11.9, f:0.6,  gi:38, fb:2.6, vc:62,  s:150},
   {n:'葡萄',       cat:'fr', cal:45,  p:0.5, c:10.3, f:0.2,  gi:46, fb:0.4, vc:4,   s:150},
   {n:'桃子',       cat:'fr', cal:44,  p:0.5, c:11.3, f:0.1,  gi:28, fb:1.5, vc:7,   s:200},
@@ -1193,6 +1192,11 @@ const FOODS=[
   {n:'花卷',       cat:'st', cal:211, p:6.8, c:43,   f:2.1,  gi:80, fb:1.5, vc:0,   s:100},
   {n:'粽子(肉)',   cat:'st', cal:348, p:11,  c:43,   f:14.5, gi:68, fb:1.2, vc:0,   s:150},
   {n:'年糕',       cat:'st', cal:154, p:3.3, c:34.3, f:0.6,  gi:85, fb:0.8, vc:0,   s:100},
+  {n:'猪肉饺子',   cat:'st', cal:239, p:8.5, c:28.5, f:10.5, gi:65, fb:1.2, vc:2,   s:150},
+  {n:'猪肉包',     cat:'st', cal:220, p:8.0, c:32.0, f:6.5,  gi:70, fb:1.0, vc:1,   s:100},
+  {n:'小菜包',     cat:'st', cal:178, p:6.2, c:31.5, f:3.2,  gi:68, fb:1.5, vc:4,   s:100},
+  {n:'鲜肉云吞',   cat:'st', cal:190, p:7.5, c:24.0, f:7.0,  gi:62, fb:0.8, vc:1,   s:120},
+  {n:'阳春面',     cat:'st', cal:136, p:4.5, c:26.5, f:1.5,  gi:60, fb:1.0, vc:0,   s:200},
   // ===== 补充蛋白质 =====
   {n:'鸭胸肉',     cat:'pr', cal:136, p:15.5,c:0.2,  f:7.5,  gi:0,  fb:0,   vc:0,   s:150},
   {n:'鲫鱼(清蒸)', cat:'pr', cal:108, p:17.1,c:3.8,  f:2.7,  gi:0,  fb:0,   vc:2,   s:150},
@@ -1201,6 +1205,7 @@ const FOODS=[
   {n:'腐竹',       cat:'pr', cal:461, p:44.6,c:22.3, f:21.7, gi:15, fb:1.0, vc:0,   s:30},
   {n:'皮蛋',       cat:'pr', cal:171, p:13.9,c:4.5,  f:10.7, gi:0,  fb:0,   vc:0,   s:50},
   {n:'鹌鹑蛋',     cat:'pr', cal:160, p:12.8,c:2.1,  f:11.1, gi:0,  fb:0,   vc:0,   s:50},
+  {n:'猪排骨',     cat:'pr', cal:278, p:18.3,c:0,    f:22.6, gi:0,  fb:0,   vc:0,   s:150},
   // ===== 补充蔬菜 =====
   {n:'紫甘蓝',     cat:'vg', cal:31,  p:1.4, c:6.9,  f:0.2,  gi:15, fb:2.1, vc:51,  s:120},
   {n:'花椰菜(白)', cat:'vg', cal:24,  p:1.9, c:4.7,  f:0.1,  gi:15, fb:2.0, vc:48,  s:150},
@@ -1208,10 +1213,24 @@ const FOODS=[
   {n:'紫菜(汤)',   cat:'vg', cal:207, p:26.7,c:22.2, f:1.1,  gi:17, fb:9.6, vc:2,   s:10},
   {n:'木耳(凉拌)', cat:'vg', cal:27,  p:1.5, c:6.0,  f:0.2,  gi:15, fb:2.8, vc:0,   s:80},
   {n:'金针菇',     cat:'vg', cal:26,  p:2.4, c:4.6,  f:0.2,  gi:15, fb:2.7, vc:2,   s:100},
+  {n:'芥蓝',       cat:'vg', cal:19,  p:2.0, c:3.1,  f:0.3,  gi:15, fb:1.9, vc:76,  s:150},
+  {n:'香菇',       cat:'vg', cal:26,  p:2.2, c:4.3,  f:0.3,  gi:15, fb:3.3, vc:1,   s:100},
+  {n:'丝瓜',       cat:'vg', cal:20,  p:1.0, c:4.2,  f:0.2,  gi:15, fb:0.6, vc:5,   s:150},
+  {n:'空心菜',     cat:'vg', cal:20,  p:2.3, c:3.1,  f:0.3,  gi:15, fb:1.4, vc:25,  s:150},
+  {n:'卷心菜',     cat:'vg', cal:25,  p:1.3, c:5.8,  f:0.1,  gi:15, fb:2.3, vc:36,  s:150},
+  {n:'广东菜心',   cat:'vg', cal:18,  p:2.1, c:2.5,  f:0.3,  gi:15, fb:1.8, vc:65,  s:150},
+  {n:'韭菜',       cat:'vg', cal:26,  p:2.4, c:4.6,  f:0.4,  gi:15, fb:1.8, vc:24,  s:100},
+  {n:'藕',         cat:'vg', cal:74,  p:1.9, c:17.1, f:0.2,  gi:38, fb:1.2, vc:44,  s:150},
+  {n:'绿豆芽',     cat:'vg', cal:18,  p:2.1, c:2.6,  f:0.1,  gi:15, fb:0.8, vc:6,   s:150},
   // ===== 补充水果 =====
   {n:'番石榴',     cat:'fr', cal:41,  p:1.1, c:10.5, f:0.4,  gi:31, fb:5.4, vc:68,  s:200},
   {n:'百香果',     cat:'fr', cal:97,  p:2.2, c:23.4, f:0.7,  gi:35, fb:10.4,vc:30,  s:100},
   {n:'杨梅',       cat:'fr', cal:28,  p:0.6, c:6.7,  f:0.2,  gi:32, fb:1.0, vc:9,   s:150},
+  {n:'菠萝',       cat:'fr', cal:50,  p:0.5, c:13.1, f:0.1,  gi:59, fb:1.4, vc:16,  s:150},
+  {n:'油桃',       cat:'fr', cal:44,  p:0.9, c:10.3, f:0.3,  gi:35, fb:1.5, vc:8,   s:150},
+  {n:'柚子',       cat:'fr', cal:42,  p:0.8, c:9.5,  f:0.2,  gi:25, fb:1.1, vc:61,  s:200},
+  {n:'柠檬',       cat:'fr', cal:35,  p:0.9, c:6.5,  f:0.4,  gi:20, fb:2.8, vc:53,  s:100},
+  {n:'石榴',       cat:'fr', cal:83,  p:1.7, c:18.7, f:1.2,  gi:35, fb:4.0, vc:10,  s:150},
 ];
 
 function giTag(gi) {
@@ -1236,7 +1255,7 @@ const SPLIT=[
 // ============ LP Solver (Tableau Simplex + Big-M) ============
 // min c^T x, s.t. A_ub x <= b_ub, A_eq x = b_eq, x >= 0
 function solveLP(c,A_ub,b_ub,A_eq,b_eq){
-  const M=1e6,mU=(A_ub||[]).length,mE=(A_eq||[]).length;
+  const M=1e4,mU=(A_ub||[]).length,mE=(A_eq||[]).length;
   const m=mU+mE,n=c.length;
   if(!m)return{status:'ok',x:c.map(()=>0),obj:0};
   const rows=[],meta=[];
@@ -1275,13 +1294,13 @@ function solveLP(c,A_ub,b_ub,A_eq,b_eq){
   for(let i=0;i<m;i++)basis.push(meta[i].aIdx!==undefined?meta[i].aIdx:meta[i].sIdx);
   for(let iter=0;iter<15000;iter++){
     let enter=-1;
-    for(let j=0;j<nT;j++)if(T[m][j]<-1e-8){enter=j;break}
+    for(let j=0;j<nT;j++)if(T[m][j]<-1e-7){enter=j;break}
     if(enter<0)break;
     let leave=-1,minR=1e18;
     for(let i=0;i<m;i++){
-      if(T[i][enter]>1e-10){
+      if(T[i][enter]>1e-8){
         const r=T[i][nT]/T[i][enter];
-        if(r<minR-1e-12||(Math.abs(r-minR)<1e-12&&basis[i]<basis[leave])){minR=r;leave=i}
+        if(r<minR-1e-10||(Math.abs(r-minR)<1e-10&&basis[i]<basis[leave])){minR=r;leave=i}
       }
     }
     if(leave<0)return{status:'unbounded',x:null,obj:-Infinity};
@@ -1290,13 +1309,13 @@ function solveLP(c,A_ub,b_ub,A_eq,b_eq){
     for(let i=0;i<=m;i++){
       if(i===leave)continue;
       const f=T[i][enter];
-      if(Math.abs(f)<1e-15)continue;
+      if(Math.abs(f)<1e-14)continue;
       for(let j=0;j<=nT;j++)T[i][j]-=f*T[leave][j];
     }
     basis[leave]=enter;
   }
   for(let i=0;i<m;i++){
-    if(basis[i]>=n+nS&&T[i][nT]>1e-3)return{status:'infeasible',x:null,obj:Infinity};
+    if(basis[i]>=n+nS&&T[i][nT]>1e-1)return{status:'infeasible',x:null,obj:Infinity};
   }
   const x=new Array(n).fill(0);
   for(let i=0;i<m;i++)if(basis[i]<n)x[basis[i]]=Math.max(0,T[i][nT]);
@@ -1406,9 +1425,9 @@ function genMealsMC(tc,tp,tcar,tf,N=3000){
   best.sort((a,b)=>a.sc-b.sc); return best.slice(0,3);
 }
 
-// ============ Entry Point: LP优先 + MC回退 ============
+// ============ Entry Point: LP优先 + MC回退 + 超时保护 ============
 function genMeals(tc,tp,tcar,tf,N){
-  if(!tc||tc<500)return genMealsMC(tc,tp,tcar,tf,N||3000);
+  if(!tc||tc<500)return genMealsMC(tc,tp,tcar,tf,500);
   const plans=[];
   const noises=[[1,-.5,1,-.5,.5,-.5],[-.5,1,-.5,1,-.5,.5],[0,0,0,0,0,0]];
   for(let i=0;i<3;i++){
@@ -1416,12 +1435,26 @@ function genMeals(tc,tp,tcar,tf,N){
     if(plan)plans.push(plan);
   }
   if(plans.length>0){plans.sort((a,b)=>a.sc-b.sc);return plans.slice(0,3)}
-  return genMealsMC(tc,tp,tcar,tf,3000);
+  return genMealsMC(tc,tp,tcar,tf,500);
 }
 
 function checkWarnings(totalCal, protein, carbs, fat, vitC, fiber, prof, isManual) {
   const warns = [];
   const p = prof || getProfile();
+  if (!p || !p.weight) {
+    // 无个人资料时，只做通用检查，跳过需要体重的个性化警告
+    if (totalCal < 1200) warns.push(`热量 ${totalCal}kcal 偏低，建议不低于 1200kcal`);
+    if (protein < 40) warns.push(`蛋白质 ${protein.toFixed(0)}g 偏低，建议适当提高`);
+    if (carbs < 50) warns.push(`碳水 ${carbs.toFixed(0)}g 过低，大脑和身体需要碳水供能`);
+    if (fat < 20) warns.push(`脂肪 ${fat.toFixed(0)}g 过低，影响激素分泌和脂溶性维生素吸收`);
+    if (vitC < 90) warns.push(`维生素C ${vitC.toFixed(0)}mg 不足，建议每日至少 90mg（多吃猕猴桃、草莓、彩椒）`);
+    if (fiber < 25) warns.push(`膳食纤维 ${fiber.toFixed(0)}g 不足，建议每日至少 25g（多吃蔬菜和全谷物）`);
+    if (isManual) {
+      if (totalCal > 2500) warns.push(`热量 ${totalCal}kcal 偏高，建议关注总摄入`);
+      if (protein > 150) warns.push(`蛋白质 ${protein.toFixed(0)}g 过高，增加肾脏负担`);
+    }
+    return warns;
+  }
   const bmr = calcBMR(p.weight, p.height, p.age, p.gender);
   const safeMin = Math.max(1000, Math.round(bmr * 0.75));
   const vitCReq = calcDailyVitC(p.gender);
@@ -1486,10 +1519,10 @@ function switchCookTab(tab) {
 function loadOverview(){
   const logs=getLogs();
   if(!logs.length){
-    document.getElementById('mW').textContent='--';
-    document.getElementById('mC').textContent='--';
-    document.getElementById('mP').textContent='--';
-    document.getElementById('mT').textContent='--';
+    document.getElementById('ovW').textContent='--';
+    document.getElementById('ovCal').textContent='--';
+    document.getElementById('ovP').textContent='--';
+    document.getElementById('ovT').textContent='--';
     document.getElementById('tBody').innerHTML='';
     ['wChart','nChart'].forEach(id=>{const el=document.getElementById(id);if(el){if(ch[id.replace('Chart','')])ch[id.replace('Chart','')].destroy();el.innerHTML='<div style="color:var(--text-hint);font-size:.8rem;text-align:center;padding:30px">暂无数据，请先在「记录今日」中录入</div>'}});
     document.getElementById('overviewBodyState').style.display='none';
@@ -1498,10 +1531,10 @@ function loadOverview(){
   // 按日期从早到晚排序
   logs.sort((a,b)=>a.date.localeCompare(b.date));
   const la=logs[logs.length-1];
-  document.getElementById('mW').textContent=la.weight;
-  document.getElementById('mC').textContent=la.breakfast_cal+la.lunch_cal+la.dinner_cal+la.snack_cal;
-  document.getElementById('mP').textContent=la.protein_g;
-  if(logs.length>=7){const d=(la.weight-logs[logs.length-7].weight).toFixed(1);document.getElementById('mT').innerHTML=`<span style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?'&#x2193;':'&#x2191;'}${Math.abs(d)}kg</span>`}
+  document.getElementById('ovW').textContent=la.weight;
+  document.getElementById('ovCal').textContent=la.breakfast_cal+la.lunch_cal+la.dinner_cal+la.snack_cal;
+  document.getElementById('ovP').textContent=la.protein_g;
+  if(logs.length>=7){const d=(la.weight-logs[logs.length-7].weight).toFixed(1);document.getElementById('ovT').innerHTML=`<span style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?'&#x2193;':'&#x2191;'}${Math.abs(d)}kg</span>`}
   drawWChart(logs.slice(-60));drawNChart(logs.slice(-14));drawTable(logs.slice(-14).slice().reverse());
 
   // 身体状态分析
@@ -1737,22 +1770,59 @@ function usePlanForCook(){
 }
 
 function runCook(){
-  toast('正在为你配餐...','info');
-  setTimeout(()=>{
-    const ps=genMeals(
-      parseFloat(document.getElementById('mC').value),
-      parseFloat(document.getElementById('mP2').value),
-      parseFloat(document.getElementById('mCb').value),
-      parseFloat(document.getElementById('mF').value),
-      5000
-    );
-    const best=ps[0];
-    const tVC = parseFloat(document.getElementById('mVC').value) || 90;
-    const tFb = parseFloat(document.getElementById('mFb').value) || 25;
-    const warns=checkWarnings(best.tc, best.tp, best.tc2, best.tf, best.tvc, best.tfb);
-    renderWarnings(warns, 'cookWarnings');
+  // 自动从规划同步数据到配餐输入框
+  if(lastPlan){
+    const d=lastPlan.plan[0];
+    const p = getP();
+    document.getElementById('mC').value=d.total_cal;
+    document.getElementById('mP2').value=d.protein_g;
+    document.getElementById('mCb').value=d.carbs_g;
+    document.getElementById('mF').value=d.fat_g;
+    document.getElementById('mVC').value=calcDailyVitC(p.gender);
+    document.getElementById('mFb').value=calcDailyFiber();
+  }
+  const btn=document.getElementById('btnCook');
+  if(btn){btn.disabled=true;btn.textContent='配餐中...'}
+  const cookEl=document.getElementById('cookResults');
+  cookEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-hint)">&#x23F3; 正在为你配餐...</div>';
 
-    document.getElementById('cookResults').innerHTML=ps.map((p,idx)=>`
+  // 用setTimeout(0)让浏览器先渲染loading状态，再执行计算
+  setTimeout(function(){
+    try{
+      const tc=parseFloat(document.getElementById('mC').value);
+      const tp=parseFloat(document.getElementById('mP2').value);
+      const tcar=parseFloat(document.getElementById('mCb').value);
+      const tf=parseFloat(document.getElementById('mF').value);
+      if(!tc||tc<500||isNaN(tc)){
+        cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">请输入有效的目标热量（≥500kcal）</div>';
+        if(btn){btn.disabled=false;btn.textContent='生成三餐'}
+        return;
+      }
+      const ps=genMeals(tc,tp,tcar,tf);
+      if(!ps||!ps.length||!ps[0]){
+        cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">配餐失败，请调整营养目标后重试</div>';
+        if(btn){btn.disabled=false;btn.textContent='生成三餐'}
+        return;
+      }
+      if(btn){btn.disabled=false;btn.textContent='生成三餐'}
+      renderCookResults(ps);
+    }catch(e){
+      cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">计算出错: '+e.message+'</div>';
+      if(btn){btn.disabled=false;btn.textContent='生成三餐'}
+    }
+  },0);
+}
+
+function renderCookResults(ps){
+  const cookEl=document.getElementById('cookResults');
+  try{
+  const best=ps[0];
+  const tVC = parseFloat(document.getElementById('mVC').value) || 90;
+  const tFb = parseFloat(document.getElementById('mFb').value) || 25;
+  const warns=checkWarnings(best.tc, best.tp, best.tc2, best.tf, best.tvc, best.tfb);
+  renderWarnings(warns, 'cookWarnings');
+
+  cookEl.innerHTML=ps.map((p,idx)=>`
       <div class="card" style="margin-bottom:12px;${idx===0?'border-color:var(--green)':''}">
         <div class="card-title"><span class="icon">${idx===0?'&#x1F3C6;':'&#x1F4CB;'}</span> 方案${idx+1}
           <span style="margin-left:auto;font-size:.73rem;color:var(--text-hint)">
@@ -1772,7 +1842,40 @@ function runCook(){
       </div>
     `).join('');
     toast('三餐方案已生成!','ok');
-  },60);
+  }catch(e){
+    cookEl.innerHTML='<div style="color:var(--red);text-align:center;padding:20px">渲染出错: '+e.message+'</div>';
+  }
+}
+
+// ============ 极简兜底方案（超时最后手段） ============
+function fallbackPlan(tc,tp){
+  const st=FOODS.filter(f=>f.cat==='st'),pr=FOODS.filter(f=>f.cat==='pr');
+  const vg=FOODS.filter(f=>f.cat==='vg'),fr=FOODS.filter(f=>f.cat==='fr'),ft=FOODS.filter(f=>f.cat==='ft');
+  const pick=(arr)=>{if(!arr.length)return{cal:0,p:0,c:0,f:0,vc:0,fb:0,cat:'st',gi:0,s:100,n:'白米饭'};return arr[Math.floor(Math.random()*arr.length)]};
+  const meals=[];
+  const splits=[.3,.35,.25,.1];
+  const pickers=[[st,pr,vg],[st,pr,vg,fr],[st,pr,vg],[fr]];
+  let tCal=0,tP=0,tC=0,tF=0,tVC=0,tFb=0;
+  for(let j=0;j<4;j++){
+    const mtc=tc*splits[j];const items=[];let rem=mtc;
+    const nItems=j===3?1:(j===0?3:3);
+    for(let i=0;i<nItems;i++){
+      const fd=pick(pickers[j]);
+      let sv=fd.s||100;
+      let cl=fd.cal*sv/100;
+      if(cl>rem*.7)sv=rem*.7*100/(fd.cal+1);cl=fd.cal*sv/100;
+      if(cl>rem)continue;
+      items.push({n:fd.n,cat:fd.cat,g:+sv.toFixed(0),cal:+cl.toFixed(0),p:+(fd.p*sv/100).toFixed(1),c:+(fd.c*sv/100).toFixed(1),f:+(fd.f*sv/100).toFixed(1),vc:+((fd.vc||0)*sv/100).toFixed(1),fb:+((fd.fb||0)*sv/100).toFixed(1),gi:fd.gi||0});
+      tCal+=cl;tP+=fd.p*sv/100;tC+=fd.c*sv/100;tF+=fd.f*sv/100;
+      tVC+=(fd.vc||0)*sv/100;tFb+=(fd.fb||0)*sv/100;rem-=cl;
+    }
+    meals.push({m:SPLIT[j].n,items,tc:0,ac:Math.round(items.reduce((a,it)=>a+it.cal,0))});
+  }
+  const sc=Math.abs(tCal-tc)/tc*3+Math.abs(tP-tp)/(tp+1)*2;
+  return{sc:+sc.toFixed(4),tc:Math.round(tCal),tp:+tP.toFixed(1),tc2:+tC.toFixed(1),
+    tf:+tF.toFixed(0),tvc:+tVC.toFixed(0),tfb:+tFb.toFixed(1),
+    pp:+(tP*4/tCal*100||0).toFixed(1),cp:+(tC*4/tCal*100||0).toFixed(1),
+    fp:+(tF*9/tCal*100||0).toFixed(1),meals};
 }
 
 // ============ 手动配餐 ============
